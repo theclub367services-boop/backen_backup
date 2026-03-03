@@ -44,7 +44,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_membership_status(self, obj):
         membership = obj.memberships.filter(status='ACTIVE').order_by('-end_date').first()
-        return membership.effective_status if membership else 'NONE'
+        return membership.effective_status if membership else 'INACTIVE'
 
     def get_last_payment_date(self, obj):
         last_payment = obj.payments.filter(payment_status='SUCCESS').order_by('-paid_at').first()
@@ -61,7 +61,7 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='full_name')
     phone = serializers.CharField()
-    profilePicture = Base64ImageField(source='profile_image', required=False)
+    profilePicture = Base64ImageField(source='profile_image', required=False, allow_null=True)
     password = serializers.CharField(write_only=True)
 
     class Meta:

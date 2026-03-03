@@ -59,7 +59,7 @@ class Membership(models.Model):
     STATUS_CHOICES = (
         ('ACTIVE', 'Active'),
         ('EXPIRED', 'Expired'),
-        ('NONE', 'None'),
+        ('INACTIVE', 'Inactive'),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='memberships')
     plan_name = models.CharField(max_length=100)
@@ -84,6 +84,7 @@ class Payment(models.Model):
         ('UPI', 'UPI'),
         ('CARD', 'Card'),
         ('NETBANKING', 'Netbanking'),
+        ('MANUAL', 'Manual'),
     )
     PAYMENT_STATUS_CHOICES = (
         ('SUCCESS', 'Success'),

@@ -616,6 +616,65 @@ class AdminVoucherDeleteView(views.APIView):
         except Voucher.DoesNotExist:
             return Response({'error': 'Voucher not found'}, status=404)
 
+class AdminMarkAsPaidView(views.APIView):
+    permission_classes = (permissions.IsAdminUser,)
+
+    @transaction.atomic
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        amount = request.data.get('amount', 4999.00)
+        
+        current_date = timezone.now().date()
+        existing_membership = Membership.objects.filter(user=user, status='ACTIVE').order_by('-end_date').first()
+        
+        start_date = current_date
+        if existing_membership and existing_membership.end_date >= current_date:
+            start_date = existing_membership.end_date + timezone.timedelta(days=1)
+
+        end_date = start_date + timezone.timedelta(days=30)
+        
+        membership = Membership.objects.create(
+            user=user,
+            plan_name='Manual Membership Extension',
+            amount=amount,
+            start_date=start_date,
+            end_date=end_date,
+            status='ACTIVE'
+        )
+
+        txn_id = f"MANUAL_{user_id}_{int(time.time())}"
+
+        payment = Payment.objects.create(
+            user=user,
+            membership=membership,
+            amount=amount,
+            payment_mode='MANUAL',
+            transaction_id=txn_id,
+            payment_status='SUCCESS',
+            paid_at=timezone.now()
+        )
+
+        TransactionLedger.objects.create(
+            payment=payment,
+            user=user,
+            amount=amount,
+            transaction_type='CREDIT',
+            description=f"Admin manual payment collection. User: {user.email}"
+        )
+
+        if user.status == 'PENDING':
+            user.status = 'ACTIVE'
+            user.save(update_fields=['status'])
+
+        return Response({
+            'status': 'Manual payment marked successfully',
+            'membership_end_date': end_date
+        }, status=status.HTTP_200_OK)
+
 # --- Profile Picture Management (Cloudinary) ---
 
 class GetUploadSignatureView(APIView):
