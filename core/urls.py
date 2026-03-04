@@ -46,5 +46,5 @@ urlpatterns = [
     path('admin/vouchers/<int:pk>/toggle/', AdminVoucherToggleView.as_view(), name='admin-voucher-toggle'),
     path('admin/vouchers/<int:pk>/delete/', AdminVoucherDeleteView.as_view(), name='admin-voucher-delete'),
     path('admin/users/<int:pk>/delete/', AdminUserDeleteView.as_view(), name='admin-user-delete'),
-    path('admin/mark-as-paid/<int:user_id>/', AdminMarkAsPaidView.as_view(), name='admin-mark-as-paid'),
+    path('admin/mark-as-paid/<int:user_id>/', AdminMarkAsPaidView.as_view(), name='admin-mark-paid'),
 ]

@@ -410,9 +410,57 @@ class UserTransactionListView(generics.ListAPIView):
     def get_queryset(self):
         return TransactionLedger.objects.filter(user=self.request.user).order_by('-transaction_date')
 
+class AdminMarkAsPaidView(views.APIView):
+    permission_classes = (permissions.IsAdminUser,)
+
+    @transaction.atomic
+    def post(self, request, user_id):
+        try:
+            target_user = User.objects.get(id=user_id)
+            current_date = timezone.now().date()
+            
+            # Find existing active membership to extend, or create new
+            existing_membership = Membership.objects.filter(user=target_user, status='ACTIVE').order_by('-end_date').first()
+            start_date = current_date
+            if existing_membership:
+                start_date = existing_membership.end_date + timezone.timedelta(days=1)
+                
+            membership = Membership.objects.create(
+                user=target_user,
+                plan_name='Manual Admin Activation',
+                amount=4999.00,  # Ensure correct mount
+                start_date=start_date,
+                end_date=start_date + timezone.timedelta(days=30),
+                status='ACTIVE'
+            )
+            
+            payment = Payment.objects.create(
+                user=target_user,
+                membership=membership,
+                amount=4999.00,
+                payment_mode='MANUAL',
+                transaction_id=f'MANUAL_{target_user.id}_{int(time.time())}',
+                payment_status='SUCCESS',
+                paid_at=timezone.now()
+            )
+            
+            TransactionLedger.objects.create(
+                payment=payment,
+                user=target_user,
+                amount=4999.00,
+                transaction_type='CREDIT',
+                description=f"Admin manual payment collection. User: {target_user.email}"
+            )
+            
+            if target_user.status != 'ACTIVE':
+                target_user.status = 'ACTIVE'
+                target_user.save()
+                
+            return Response({'status': 'Member manually activated', 'user_id': target_user.id}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
 # --- Vouchers ---
-
-
 class VoucherListView(generics.ListAPIView):
     queryset = Voucher.objects.filter(is_active=True)
     serializer_class = VoucherSerializer
